@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}答题结果 - {{ '🎉 全对！' if record.correct_count == record.total_questions else '' }}{% endblock %}
+{% block content %}
+
+{% if group_name %}
+<div class="row mb-4">
+    <div class="col-12">
+        {% if group_all_correct %}
+        <div class="alert alert-success text-center animate__animated animate__bounceIn" role="alert">
+            <h3 class="mb-1">🎉 恭喜！题组「{{ group_name }}」全部正确！</h3>
+            <p class="mb-0">下一题组已解锁，快去挑战吧！</p>
+        </div>
+        {% else %}
+        <div class="alert alert-warning text-center animate__animated animate__shakeX" role="alert">
+            <h3 class="mb-1">❌ 题组「{{ group_name }}」未通过</h3>
+            <p class="mb-0">以下标红的题目有误，请复习后重新挑战该题组。下一题组尚未解锁。</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-white">
+                <h3 class="mb-0"><i class="bi bi-trophy-fill text-warning"></i> 答题结果</h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <div class="display-1">{{ record.score }}</div>
+                            <p class="lead">得分</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <div class="display-6">{{ record.correct_count }}/{{ record.total_questions }}</div>
+                            <p class="lead">正确/总题数</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            {% set seconds = (record.end_time - record.start_time).total_seconds() %}
+                            <div class="display-6">{{ (seconds//60)|int }}分{{ (seconds%60)|round }}秒</div>
+                            <p class="lead">用时</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-center gap-3 mt-3 flex-wrap">
+                    <a href="{{ url_for('quiz.index') }}" class="btn btn-primary"><i class="bi bi-house"></i> 返回首页</a>
+                    {% if has_roadmap %}
+                    <a href="{{ url_for('quiz.roadmap', category_id=record.category_id) }}" class="btn btn-success"><i class="bi bi-signpost-2"></i> 返回学习路线</a>
+                    {% endif %}
+                    <a href="{{ url_for('quiz.history') }}" class="btn btn-outline-secondary"><i class="bi bi-clock-history"></i> 历史记录</a>
+                </div>
+            </div>
+            <!-- 全对动画 -->
+            {% if record.correct_count == record.total_questions %}
+            <div class="text-center mt-4" id="celebration">
+                <div class="display-4 text-warning" style="animation: celebrate 1s ease-in-out 3;">
+                    🎉 恭喜全对！ 🎉
+                </div>
+            </div>
+            <style>
+            @keyframes celebrate {
+                0% { transform: scale(1); }
+                50% { transform: scale(1.2); color: #ffc107; }
+                100% { transform: scale(1); }
+            }
+            </style>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-white">
+                <h4><i class="bi bi-list-ul"></i> 题目详情</h4>
+            </div>
+            <div class="card-body">
+                {% if record.details %}
+                <div class="accordion" id="questionAccordion">
+                    {% for detail in record.details %}
+                    <div class="accordion-item mb-2">
+                        <h2 class="accordion-header" id="heading{{ detail.id }}">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ detail.id }}" aria-expanded="false" aria-controls="collapse{{ detail.id }}">
+                                <span class="me-2">
+                                    {% if detail.is_correct %}
+                                    <i class="bi bi-check-circle-fill text-success"></i>
+                                    {% else %}
+                                    <i class="bi bi-x-circle-fill text-danger"></i>
+                                    {% endif %}
+                                </span>
+                                <span class="fw-bold">{{ detail.question.content|truncate(80) }}</span>
+                            </button>
+                        </h2>
+                        <div id="collapse{{ detail.id }}" class="accordion-collapse collapse" aria-labelledby="heading{{ detail.id }}" data-bs-parent="#questionAccordion">
+                            <div class="accordion-body">
+                                <p><strong>题干：</strong><br>{{ detail.question.content }}</p>
+                                <p>
+                                    <strong>你的答案：</strong>
+                                    {% if detail.user_answer is iterable and detail.user_answer is not string %}
+                                        {{ detail.user_answer|join(', ') }}
+                                    {% else %}
+                                        {{ detail.user_answer or '(未答)' }}
+                                    {% endif %}
+                                    {% if detail.is_correct %}
+                                        <span class="badge bg-success ms-2">正确</span>
+                                    {% else %}
+                                        <span class="badge bg-danger ms-2">错误</span>
+                                    {% endif %}
+                                </p>
+                                <p><strong>正确答案：</strong> {{ detail.question.answer }}</p>
+                                {% if detail.question.analysis %}
+                                <p><strong>解析：</strong><br>{{ detail.question.analysis }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted text-center">没有题目详情记录。</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}首页 - 在线答题系统{% endblock %}
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2 class="display-6"><i class="bi bi-grid-3x3-gap-fill me-2"></i>题库分类</h2>
+        <p class="text-muted">选择分类开始学习，解锁题组逐步进阶</p>
+    </div>
+</div>
+<div class="row g-4">
+    {% for cat in categories %}
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body d-flex flex-column">
+                <h5 class="card-title">
+                    <i class="bi bi-folder-symlink me-2" style="color: #1a1a1a;"></i>{{ cat.name }}
+                </h5>
+                <p class="card-text text-muted">
+                    题目数量: <span class="badge bg-secondary">{{ cat.questions|list|length }}</span>
+                    {% if cat.groups %}
+                    · 题组: <span class="badge bg-secondary">{{ cat.groups|list|length }}</span>
+                    {% endif %}
+                </p>
+                {% if current_user.is_authenticated and category_progress.get(cat.id) %}
+                {% set cp = category_progress[cat.id] %}
+                <div class="progress-stats mb-2" style="font-size:0.8rem; color:#6c6c6c;">
+                    {% if cp.total_groups > 0 %}
+                    <div class="d-flex justify-content-between mb-1">
+                        <span>已完成 {{ cp.completed_groups }}/{{ cp.total_groups }} 组</span>
+                    </div>
+                    <div class="progress" style="height:5px; border-radius:3px;">
+                        <div class="progress-bar bg-success" style="width:{% if cp.total_groups > 0 %}{{ (cp.completed_groups / cp.total_groups * 100)|int }}{% else %}0{% endif %}%"></div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+                <div class="mt-auto d-flex gap-2 flex-wrap">
+                    {% if cat.groups %}
+                    <a href="{{ url_for('quiz.roadmap', category_id=cat.id) }}" class="btn btn-primary flex-grow-1">
+                        <i class="bi bi-signpost-2"></i> 学习路线
+                    </a>
+                    {% else %}
+                    <a href="{{ url_for('quiz.start_quiz', category_id=cat.id) }}" class="btn btn-primary flex-grow-1">
+                        <i class="bi bi-shuffle"></i> 随机答题
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-12">
+        <div class="alert alert-info text-center">
+            <i class="bi bi-inbox"></i> 暂无分类，请管理员添加。
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}答题中{% endblock %}
+
+{% block head %}
+<style>
+{% if group_background_image %}
+body {
+    background: linear-gradient(rgba(255,255,255,0.9), rgba(255,255,255,0.9)), url('{{ url_for('static', filename=group_background_image.replace('static/', '')) }}') no-repeat center center fixed;
+    background-size: cover;
+}
+{% endif %}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <!-- 返回按钮 -->
+        <div class="mb-3">
+            {% if group_mode and group_category_id %}
+            <a href="{{ url_for('quiz.roadmap', category_id=group_category_id) }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left"></i> 返回学习路线
+            </a>
+            {% else %}
+            <a href="{{ url_for('quiz.index') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left"></i> 返回首页
+            </a>
+            {% endif %}
+        </div>
+        <div class="card">
+            <div class="card-header bg-white py-3 d-flex align-items-center">
+                <div class="flex-grow-1">
+                    <h5 class="mb-0">
+                        {% if group_name %}
+                        <span class="badge bg-info me-2"><i class="bi bi-layers"></i> {{ group_name }}</span>
+                        {% endif %}
+                        <span class="badge bg-secondary">{{ index+1 }}/{{ total }}</span>
+                    </h5>
+                </div>
+                <div class="flex-shrink-0">
+                    <span class="badge bg-light text-dark">
+                        <i class="bi bi-question-circle"></i> {{ question.type }}
+                    </span>
+                </div>
+            </div>
+            <div class="progress" style="height: 6px;">
+                <div class="progress-bar bg-primary" role="progressbar" style="width: {{ ((index+1)/total)*100 }}%;"></div>
+            </div>
+            <div class="card-body p-4">
+                <form method="post" id="quizForm">
+                    <input type="hidden" name="question_id" value="{{ question.id }}">
+                    <input type="hidden" name="type" value="{{ question.type }}">
+                    
+                    <h4 class="mb-4">{{ question.content }}</h4>
+                    
+                    {% if question.type == 'single' %}
+                        <div class="list-group">
+                            {% for opt in question.options %}
+                            <label class="list-group-item list-group-item-action d-flex gap-3">
+                                <input class="form-check-input me-1" type="radio" name="answer" value="{{ opt[0] }}" {% if saved_answer == opt[0] %}checked{% endif %} required>
+                                <span>{{ opt }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    {% elif question.type == 'multiple' %}
+                        <div class="list-group">
+                            {% for opt in question.options %}
+                            <label class="list-group-item list-group-item-action d-flex gap-3">
+                                <input class="form-check-input me-1" type="checkbox" name="answer" value="{{ opt[0] }}" {% if saved_answer and opt[0] in saved_answer %}checked{% endif %}>
+                                <span>{{ opt }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    {% elif question.type == 'judge' %}
+                        <div class="d-flex gap-3">
+                            <label class="btn btn-outline-success flex-fill p-3">
+                                <input type="radio" name="answer" value="正确" class="d-none" {% if saved_answer == '正确' %}checked{% endif %} required>
+                                <i class="bi bi-check-lg"></i> 正确
+                            </label>
+                            <label class="btn btn-outline-danger flex-fill p-3">
+                                <input type="radio" name="answer" value="错误" class="d-none" {% if saved_answer == '错误' %}checked{% endif %} required>
+                                <i class="bi bi-x-lg"></i> 错误
+                            </label>
+                        </div>
+                    {% elif question.type == 'fill' %}
+                        <div class="mb-3">
+                            <input type="text" name="answer" class="form-control form-control-lg" value="{{ saved_answer or '' }}" placeholder="请输入答案" required>
+                        </div>
+                    {% endif %}
+                    
+                    <hr class="my-4">
+                    
+                    <div class="d-flex justify-content-between">
+                        <button type="submit" name="action" value="prev" class="btn btn-outline-secondary" {% if index == 0 %}disabled{% endif %}>
+                            <i class="bi bi-arrow-left"></i> 上一题
+                        </button>
+                        <div>
+                            <button type="submit" name="action" value="next" class="btn btn-primary me-2" {% if index == total-1 %}disabled{% endif %}>
+                                下一题 <i class="bi bi-arrow-right"></i>
+                            </button>
+                            <button type="submit" name="action" value="submit" class="btn btn-danger">
+                                <i class="bi bi-check2-circle"></i> 交卷
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('.btn-outline-success, .btn-outline-danger').forEach(btn => {
+    btn.addEventListener('click', function() {
+        this.closest('.d-flex').querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        this.querySelector('input').checked = true;
+    });
+});
+window.addEventListener('load', function() {
+    document.querySelectorAll('input[type=radio]:checked, input[type=checkbox]:checked').forEach(input => {
+        if (input.type === 'radio' && input.closest('.btn')) {
+            input.closest('.btn').classList.add('active');
+        }
+    });
+});
+</script>
+{% endblock %}

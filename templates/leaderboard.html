@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+{% block title %}排行榜 - 在线答题系统{% endblock %}
+
+{% block head %}
+<style>
+    .leaderboard-header {
+        text-align: center;
+        margin-bottom: 1.5rem;
+    }
+    .leaderboard-header h2 {
+        font-weight: 700;
+        margin-bottom: 0.3rem;
+    }
+    .leaderboard-header .subtitle {
+        color: #6c6c6c;
+        font-size: 0.95rem;
+    }
+    
+    /* 前三名样式 */
+    .podium {
+        display: flex;
+        justify-content: center;
+        align-items: flex-end;
+        gap: 1rem;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+    }
+    .podium-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-width: 90px;
+    }
+    .podium-avatar {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #fff;
+        margin-bottom: 0.5rem;
+    }
+    .podium-item.gold .podium-avatar { 
+        background: linear-gradient(135deg, #f6d365, #fda085);
+        width: 74px; height: 74px; font-size: 1.8rem;
+        box-shadow: 0 4px 20px rgba(246, 211, 101, 0.4);
+    }
+    .podium-item.silver .podium-avatar { 
+        background: linear-gradient(135deg, #a1c4fd, #c2e9fb);
+        width: 64px; height: 64px; font-size: 1.6rem;
+        box-shadow: 0 4px 16px rgba(161, 196, 253, 0.4);
+    }
+    .podium-item.bronze .podium-avatar { 
+        background: linear-gradient(135deg, #d4a574, #e8c392);
+        box-shadow: 0 4px 16px rgba(212, 165, 116, 0.4);
+    }
+    .podium-name {
+        font-weight: 700;
+        font-size: 0.85rem;
+        color: #1a1a1a;
+        text-align: center;
+        margin-bottom: 0.2rem;
+    }
+    .podium-score {
+        font-size: 0.75rem;
+        color: #6c6c6c;
+    }
+    
+    /* 排行榜表格 */
+    .rank-table {
+        width: 100%;
+        border-radius: 1rem;
+        overflow: hidden;
+    }
+    .rank-table thead th {
+        background: rgba(0,0,0,0.03);
+        font-weight: 600;
+        font-size: 0.8rem;
+        color: #666;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid rgba(0,0,0,0.06);
+        padding: 0.75rem 1rem;
+    }
+    .rank-table tbody td {
+        padding: 0.7rem 1rem;
+        font-size: 0.9rem;
+        vertical-align: middle;
+        border-bottom: 1px solid rgba(0,0,0,0.04);
+    }
+    .rank-table tbody tr {
+        transition: background 0.2s;
+    }
+    .rank-table tbody tr:hover {
+        background: rgba(0,0,0,0.02);
+    }
+    .rank-badge {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 0.8rem;
+        color: #fff;
+        background: #6c6c6c;
+    }
+    .rank-badge.top1 { background: linear-gradient(135deg, #f6d365, #fda085); }
+    .rank-badge.top2 { background: linear-gradient(135deg, #a1c4fd, #c2e9fb); }
+    .rank-badge.top3 { background: linear-gradient(135deg, #d4a574, #e8c392); }
+    
+    .accuracy-bar {
+        height: 6px;
+        border-radius: 3px;
+        background: #e5e7eb;
+        overflow: hidden;
+        margin-top: 4px;
+    }
+    .accuracy-bar-fill {
+        height: 100%;
+        border-radius: 3px;
+        background: linear-gradient(90deg, #10b981, #34d399);
+        transition: width 0.5s ease;
+    }
+    .accuracy-text {
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+    .accuracy-high { color: #10b981; }
+    .accuracy-mid { color: #f59e0b; }
+    .accuracy-low { color: #9ca3af; }
+    
+    .current-user-row {
+        background: rgba(245, 158, 11, 0.08) !important;
+        border-left: 3px solid #f59e0b;
+    }
+    .current-user-row td:first-child {
+        border-left: 3px solid #f59e0b;
+    }
+    
+    .no-data {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: #9ca3af;
+    }
+    .no-data i {
+        font-size: 3rem;
+        display: block;
+        margin-bottom: 0.8rem;
+        opacity: 0.4;
+    }
+    
+    .stat-box {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .stat-box .bi {
+        font-size: 1.1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="leaderboard-header">
+    <h2><i class="bi bi-trophy-fill" style="color: #f6d365;"></i> 排行榜</h2>
+    <p class="subtitle">按总得分排名，看看谁是答题王者</p>
+</div>
+
+{% if ranked_users %}
+    <!-- 前三名领奖台 -->
+    {% if ranked_users|length >= 3 %}
+    <div class="podium">
+        {% set second = ranked_users[1] %}
+        <div class="podium-item silver">
+            <div class="podium-avatar">🥈</div>
+            <div class="podium-name">{{ second.username }}</div>
+            <div class="podium-score">{{ second.total_score }} 分</div>
+        </div>
+        {% set first = ranked_users[0] %}
+        <div class="podium-item gold">
+            <div class="podium-avatar">👑</div>
+            <div class="podium-name">{{ first.username }}</div>
+            <div class="podium-score">{{ first.total_score }} 分</div>
+        </div>
+        {% set third = ranked_users[2] %}
+        <div class="podium-item bronze">
+            <div class="podium-avatar">🥉</div>
+            <div class="podium-name">{{ third.username }}</div>
+            <div class="podium-score">{{ third.total_score }} 分</div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 完整排名列表 -->
+    <div class="table-responsive">
+        <table class="table rank-table">
+            <thead>
+                <tr>
+                    <th style="width:60px;">排名</th>
+                    <th>用户</th>
+                    <th>总得分</th>
+                    <th>答题数</th>
+                    <th>正确数</th>
+                    <th>正确率</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in ranked_users %}
+                <tr class="{% if current_user.is_authenticated and user.user_id == current_user.id %}current-user-row{% endif %}">
+                    <td>
+                        {% if user.rank == 1 %}
+                            <span class="rank-badge top1">1</span>
+                        {% elif user.rank == 2 %}
+                            <span class="rank-badge top2">2</span>
+                        {% elif user.rank == 3 %}
+                            <span class="rank-badge top3">3</span>
+                        {% else %}
+                            <span class="rank-badge">{{ user.rank }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <strong>{{ user.username }}</strong>
+                        {% if current_user.is_authenticated and user.user_id == current_user.id %}
+                            <span class="badge" style="background: #fef3c7; color: #d97706; font-size: 0.7rem; margin-left: 4px;">我</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="fw-bold" style="font-size:1.05rem;">{{ user.total_score }}</span>
+                    </td>
+                    <td>{{ user.total_questions }}</td>
+                    <td>{{ user.total_correct }}</td>
+                    <td>
+                        <span class="accuracy-text {% if user.accuracy >= 80 %}accuracy-high{% elif user.accuracy >= 50 %}accuracy-mid{% else %}accuracy-low{% endif %}">
+                            {{ user.accuracy }}%
+                        </span>
+                        <div class="accuracy-bar">
+                            <div class="accuracy-bar-fill" style="width: {{ user.accuracy }}%;"></div>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% else %}
+    <div class="no-data">
+        <i class="bi bi-trophy"></i>
+        <p>暂无排名数据</p>
+        <p class="text-muted" style="font-size:0.85rem;">快去答题来抢占榜首吧！</p>
+    </div>
+{% endif %}
+
+<div class="text-center mt-3">
+    <a href="{{ url_for('quiz.index') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> 返回首页
+    </a>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // 正确率进度条动画
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.accuracy-bar-fill').forEach(bar => {
+            const targetWidth = bar.style.width;
+            bar.style.width = '0%';
+            setTimeout(() => {
+                bar.style.width = targetWidth;
+            }, 100);
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="catGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- 文件夹主体 -->
+  <path d="M 10 18 L 10 52 C 10 54 12 56 14 56 L 50 56 C 52 56 54 54 54 52 L 54 22 L 42 10 L 14 10 C 12 10 10 12 10 18 Z" 
+        fill="url(#catGrad)" stroke="#5a67d8" stroke-width="2"/>
+  
+  <!-- 文件夹标签 -->
+  <path d="M 10 18 L 10 24 C 10 26 12 28 14 28 L 50 28 L 50 22 L 42 22 L 42 10 L 14 10 C 12 10 10 12 10 18 Z" 
+        fill="#7c8ff5"/>
+  
+  <!-- 文档图标 -->
+  <rect x="26" y="34" width="20" height="16" rx="2" fill="white" opacity="0.9"/>
+  <line x1="30" y1="40" x2="42" y2="40" stroke="#a0aec0" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="30" y1="45" x2="42" y2="45" stroke="#a0aec0" stroke-width="1.5" stroke-linecap="round"/>
+</svg>

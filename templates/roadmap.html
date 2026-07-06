@@ -1,0 +1,383 @@
+{% extends "base.html" %}
+{% block title %}{{ category.name }} - 学习路线{% endblock %}
+
+{% block head %}
+<style>
+    .roadmap-container {
+        padding: 2rem 0;
+    }
+    .roadmap-title {
+        text-align: center;
+        margin-bottom: 2.5rem;
+    }
+    .roadmap-title h2 {
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+    .roadmap-title .subtitle {
+        color: #6c6c6c;
+        font-size: 1rem;
+    }
+    
+    .roadmap-grid {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 2rem;
+        position: relative;
+        padding: 2rem 1rem;
+    }
+    
+    .group-node {
+        width: 240px;
+        border-radius: 1.2rem;
+        padding: 1.5rem 1.2rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        border: 2px solid #e0e0e0;
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(10px);
+        overflow: hidden;
+    }
+    
+    .node-bg-img {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        opacity: 0.15;
+        z-index: 0;
+        pointer-events: none;
+    }
+    .group-node > *:not(.node-bg-img) {
+        position: relative;
+        z-index: 1;
+    }
+    
+    .group-node:hover {
+        transform: translateY(-6px);
+        box-shadow: 0 16px 32px rgba(0,0,0,0.08);
+    }
+    
+    .group-node.unlocked {
+        border-color: #2c2c2c;
+        background: rgba(255, 255, 255, 0.95);
+    }
+    
+    .group-node.locked {
+        opacity: 0.45;
+        cursor: not-allowed;
+        filter: grayscale(0.6);
+        border-color: #d0d0d0;
+        background: rgba(240, 240, 240, 0.7);
+    }
+    
+    .group-node.current {
+        border-color: #f59e0b;
+        border-width: 3px;
+        background: rgba(255, 251, 235, 0.9);
+        animation: pulse-node 2s ease-in-out infinite;
+    }
+    
+    .group-node.completed {
+        border-color: #10b981;
+        background: rgba(236, 253, 245, 0.8);
+    }
+    
+    @keyframes pulse-node {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.3); }
+        50% { box-shadow: 0 0 0 12px rgba(245, 158, 11, 0); }
+    }
+    
+    .node-icon {
+        font-size: 2.5rem;
+        margin-bottom: 0.8rem;
+    }
+    .node-order {
+        position: absolute;
+        top: -12px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #1a1a1a;
+        color: white;
+        border-radius: 50%;
+        width: 28px;
+        height: 28px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .locked .node-order {
+        background: #b0b0b0;
+    }
+    .completed .node-order {
+        background: #10b981;
+    }
+    
+    .node-name {
+        font-weight: 700;
+        font-size: 1.05rem;
+        margin-bottom: 0.4rem;
+        color: #1a1a1a;
+    }
+    .locked .node-name {
+        color: #999;
+    }
+    
+    .node-desc {
+        font-size: 0.8rem;
+        color: #666;
+        margin-bottom: 0.8rem;
+        line-height: 1.4;
+    }
+    .locked .node-desc {
+        color: #b0b0b0;
+    }
+    
+    .node-actions {
+        display: flex;
+        gap: 0.5rem;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    .node-actions .btn {
+        font-size: 0.78rem;
+        padding: 0.35rem 1rem;
+    }
+    
+    .node-badge {
+        display: inline-block;
+        padding: 0.2rem 0.7rem;
+        border-radius: 1rem;
+        font-size: 0.7rem;
+        font-weight: 600;
+        margin-bottom: 0.6rem;
+    }
+    .badge-locked {
+        background: #f3f4f6;
+        color: #9ca3af;
+    }
+    .badge-current {
+        background: #fef3c7;
+        color: #d97706;
+    }
+    .badge-done {
+        background: #d1fae5;
+        color: #059669;
+    }
+    .badge-unlocked {
+        background: #e5e7eb;
+        color: #4b5563;
+    }
+    
+    /* 连线 SVG */
+    .connector-svg {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 0;
+    }
+    
+    .legend {
+        display: flex;
+        justify-content: center;
+        gap: 2rem;
+        margin-top: 2rem;
+        font-size: 0.85rem;
+        color: #6c6c6c;
+    }
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+    .legend-dot {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        border: 2px solid;
+    }
+    .legend-dot.completed-dot { border-color: #10b981; background: #d1fae5; }
+    .legend-dot.current-dot { border-color: #f59e0b; background: #fef3c7; }
+    .legend-dot.locked-dot { border-color: #d0d0d0; background: #f3f4f6; }
+    .legend-dot.unlocked-dot { border-color: #2c2c2c; background: #fff; }
+    
+    .back-link {
+        text-align: center;
+        margin-top: 1.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="roadmap-container">
+    <div class="roadmap-title">
+        <h2><i class="bi bi-signpost-2"></i> {{ category.name }}</h2>
+        <p class="subtitle">按顺序学习，每组全对才能解锁下一组</p>
+    </div>
+    
+    <svg class="connector-svg" id="connectorSvg"></svg>
+    
+    <div class="roadmap-grid" id="roadmapGrid">
+        {% for group in groups %}
+        {% set node_class = 'locked' %}
+        {% set badge_text = '🔒 未解锁' %}
+        {% set badge_class = 'badge-locked' %}
+        {% set node_icon = '🔒' %}
+        
+        {% if group.unlock_order == 0 %}
+            {% set node_class = 'unlocked' %}
+            {% set badge_text = '📖 开放' %}
+            {% set badge_class = 'badge-unlocked' %}
+            {% set node_icon = '📚' %}
+        {% elif group.unlock_order <= unlocked_order %}
+            {% set node_class = 'completed' %}
+            {% set badge_text = '✅ 已完成' %}
+            {% set badge_class = 'badge-done' %}
+            {% set node_icon = '🏆' %}
+        {% elif group.unlock_order == unlocked_order + 1 %}
+            {% set node_class = 'current' %}
+            {% set badge_text = '📍 当前' %}
+            {% set badge_class = 'badge-current' %}
+            {% set node_icon = '🎯' %}
+        {% endif %}
+        
+<div class="group-node {{ node_class }}" data-group-id="{{ group.id }}" data-order="{{ group.unlock_order }}" data-class="{{ node_class }}">
+            {% if group.background_image %}
+            <img src="{{ url_for('static', filename=group.background_image.replace('static/', '')) }}" class="node-bg-img" alt="">
+            {% endif %}
+            <div class="node-order">{{ group.unlock_order if group.unlock_order > 0 else '∞' }}</div>
+            <div class="node-icon">{{ node_icon }}</div>
+            <div class="node-badge {{ badge_class }}">{{ badge_text }}</div>
+            <div class="node-name">{{ group.name }}</div>
+            {% if group.description %}
+            <div class="node-desc">{{ group.description[:80] }}{% if group.description|length > 80 %}...{% endif %}</div>
+            {% endif %}
+            <div class="node-actions">
+                {% if node_class != 'locked' %}
+                    {% if group.study_content %}
+                    <a href="{{ url_for('quiz.study', group_id=group.id) }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-book"></i> 学习
+                    </a>
+                    {% endif %}
+                    <a href="{{ url_for('quiz.start_group', group_id=group.id) }}" class="btn btn-primary btn-sm">
+                        <i class="bi bi-play-fill"></i> 答题
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <div class="legend">
+        <div class="legend-item"><span class="legend-dot locked-dot"></span> 未解锁</div>
+        <div class="legend-item"><span class="legend-dot current-dot"></span> 进行中</div>
+        <div class="legend-item"><span class="legend-dot unlocked-dot"></span> 可进入</div>
+        <div class="legend-item"><span class="legend-dot completed-dot"></span> 已完成</div>
+    </div>
+    
+    <div class="back-link">
+        <a href="{{ url_for('quiz.index') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> 返回首页
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function drawConnectors() {
+        const nodes = document.querySelectorAll('.group-node');
+        const svg = document.getElementById('connectorSvg');
+        const grid = document.getElementById('roadmapGrid');
+        
+        // 清除旧的连线
+        svg.innerHTML = '';
+        
+        if (nodes.length < 2) return;
+        
+        const gridRect = grid.getBoundingClientRect();
+        const nodesArray = Array.from(nodes).sort((a, b) => {
+            return parseInt(a.dataset.order) - parseInt(b.dataset.order);
+        });
+        
+        for (let i = 0; i < nodesArray.length - 1; i++) {
+            const nodeA = nodesArray[i];
+            const nodeB = nodesArray[i + 1];
+            
+            const rectA = nodeA.getBoundingClientRect();
+            const rectB = nodeB.getBoundingClientRect();
+            
+            // 从右边缘中心 到 左边缘中心
+            const x1 = rectA.right - gridRect.left;
+            const y1 = rectA.top + rectA.height / 2 - gridRect.top;
+            const x2 = rectB.left - gridRect.left;
+            const y2 = rectB.top + rectB.height / 2 - gridRect.top;
+            
+            const midX = (x1 + x2) / 2;
+            
+            // 根据前后两个节点的状态决定连线样式
+            const classA = nodeA.dataset.class;
+            const classB = nodeB.dataset.class;
+            let strokeColor = '#d0d0d0';
+            let strokeDash = '6,4';
+            
+            if (classA === 'completed' && classB === 'current') {
+                strokeColor = '#f59e0b';
+                strokeDash = 'none';
+            } else if (classA === 'completed' && classB !== 'locked') {
+                strokeColor = '#10b981';
+                strokeDash = 'none';
+            } else if (classB === 'current' || classB === 'unlocked') {
+                strokeColor = '#2c2c2c';
+                strokeDash = '4,4';
+            }
+            
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            const d = `M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}`;
+            path.setAttribute('d', d);
+            path.setAttribute('stroke', strokeColor);
+            path.setAttribute('stroke-width', '2.5');
+            path.setAttribute('fill', 'none');
+            path.setAttribute('stroke-dasharray', strokeDash);
+            path.setAttribute('stroke-linecap', 'round');
+            
+            // 添加箭头
+            const arrowSize = 8;
+            const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+            const angle = Math.atan2(y2 - y1, x2 - x1);
+            const tipX = x2 - Math.cos(angle) * 20;
+            const tipY = y2 - Math.sin(angle) * 20;
+            arrow.setAttribute('points', 
+                `${tipX},${tipY} ` +
+                `${tipX - arrowSize * Math.cos(angle - Math.PI/6)},${tipY - arrowSize * Math.sin(angle - Math.PI/6)} ` +
+                `${tipX - arrowSize * Math.cos(angle + Math.PI/6)},${tipY - arrowSize * Math.sin(angle + Math.PI/6)}`
+            );
+            arrow.setAttribute('fill', strokeColor);
+            
+            svg.appendChild(path);
+            svg.appendChild(arrow);
+        }
+    }
+    
+    window.addEventListener('load', drawConnectors);
+    window.addEventListener('resize', drawConnectors);
+    
+    // 防止锁定节点被点击
+    document.querySelectorAll('.group-node.locked').forEach(node => {
+        node.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        });
+    });
+</script>
+{% endblock %}

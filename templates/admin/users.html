@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}用户管理{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-people me-2"></i>用户管理</h2>
+</div>
+<div class="table-responsive">
+    <table class="table table-hover align-middle bg-white">
+        <thead class="table-light">
+            <tr>
+                <th>ID</th>
+                <th>用户名</th>
+                <th>邮箱</th>
+                <th>角色</th>
+                <th>注册时间</th>
+                <th>状态</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for u in users %}
+            <tr>
+                <td>{{ u.id }}</td>
+                <td><i class="bi bi-person-circle me-1"></i>{{ u.username }}</td>
+                <td>{{ u.email }}</td>
+                <td><span class="badge bg-{{ 'danger' if u.role=='admin' else 'secondary' }}">{{ u.role }}</span></td>
+                <td>{{ u.created_at.strftime('%Y-%m-%d') }}</td>
+                <td>
+                    {% if u.status %}
+                    <span class="badge bg-success">启用</span>
+                    {% else %}
+                    <span class="badge bg-secondary">禁用</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <div class="d-flex gap-1">
+                        <a href="{{ url_for('admin.admin_toggle_user', id=u.id) }}" class="btn btn-sm btn-{{ 'warning' if u.status else 'success' }}">
+                            <i class="bi bi-{{ 'toggle-off' if u.status else 'toggle-on' }}"></i> {{ '禁用' if u.status else '启用' }}
+                        </a>
+                        {% if u.id != current_user.id %}
+                        <a href="{{ url_for('admin.admin_clear_user_history', id=u.id) }}" class="btn btn-sm btn-danger"
+                           onclick="return confirm('确定要清除用户 {{ u.username }} 的所有答题历史数据吗？此操作不可撤销！');">
+                            <i class="bi bi-trash"></i> 清除历史
+                        </a>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="7" class="text-center py-4 text-muted">
+                    <i class="bi bi-inbox fs-1 d-block mb-2"></i> 暂无用户
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

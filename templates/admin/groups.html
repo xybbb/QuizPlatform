@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}分组管理{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-layers me-2"></i>分组管理</h2>
+    <a href="{{ url_for('admin.admin_group_add') }}" class="btn btn-success">
+        <i class="bi bi-plus-lg"></i> 新增分组
+    </a>
+</div>
+<div class="table-responsive">
+    <table class="table table-hover align-middle bg-white">
+        <thead class="table-light">
+            <tr>
+                <th>ID</th>
+                <th>名称</th>
+                <th>所属分类</th>
+                <th>顺序</th>
+                <th>解锁序号</th>
+                <th>背景图片</th>
+                <th>描述</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for g in groups %}
+            <tr>
+                <td>{{ g.id }}</td>
+                <td><i class="bi bi-collection me-1 text-primary"></i>{{ g.name }}</td>
+                <td>{{ g.category.name }}</td>
+                <td>{{ g.order }}</td>
+                <td>{% if g.unlock_order > 0 %}{{ g.unlock_order }}{% else %}<span class="text-muted">-</span>{% endif %}</td>
+                <td>
+                    {% if g.background_image %}
+                    <img src="{{ url_for('static', filename=g.background_image.replace('static/', '')) }}" alt="bg" style="max-height:30px;border-radius:4px;">
+                    {% else %}
+                    <span class="text-muted">-</span>
+                    {% endif %}
+                </td>
+                <td>{{ g.description or '-' }}</td>
+                <td>
+                    <a href="{{ url_for('admin.admin_group_edit', id=g.id) }}" class="btn btn-sm btn-warning">
+                        <i class="bi bi-pencil"></i> 编辑
+                    </a>
+                    <a href="{{ url_for('admin.admin_group_delete', id=g.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('确定删除？')">
+                        <i class="bi bi-trash"></i> 删除
+                    </a>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="8" class="text-center py-4 text-muted">
+                    <i class="bi bi-inbox fs-1 d-block mb-2"></i> 暂无分组
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}{{ '编辑' if group else '新增' }}分组{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-white">
+                <h4><i class="bi bi-{{ 'pencil' if group else 'plus' }} me-2"></i>{{ '编辑' if group else '新增' }}分组</h4>
+            </div>
+            <div class="card-body p-4">
+                <form method="post" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label class="form-label">名称</label>
+                        <input type="text" name="name" class="form-control" value="{{ group.name if group else '' }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">所属分类</label>
+                        <select name="category_id" class="form-select" required>
+                            {% for cat in categories %}
+                            <option value="{{ cat.id }}" {% if group and group.category_id == cat.id %}selected{% endif %}>{{ cat.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">排序</label>
+                            <input type="number" name="order" class="form-control" value="{{ group.order if group else 0 }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">解锁序号</label>
+                            <input type="number" name="unlock_order" class="form-control" value="{{ group.unlock_order if group else 0 }}" placeholder="0=无需解锁">
+                            <small class="text-muted">0=无需解锁，≥1=需按序号顺序解锁</small>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">描述</label>
+                        <textarea name="description" class="form-control" rows="2">{{ group.description if group else '' }}</textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">学习资料 <small class="text-muted">(支持 HTML/Markdown)</small></label>
+                        <textarea name="study_content" class="form-control" rows="8" style="font-family:monospace;">{{ group.study_content if group and group.study_content else '' }}</textarea>
+                        <small class="text-muted">可以输入 HTML 代码或 Markdown 格式的学习资料。用户在学习页面可以看到此内容。</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">背景图片</label>
+                        {% if group and group.background_image %}
+                        <div class="mb-2">
+                            <img src="{{ url_for('static', filename=group.background_image.replace('static/', '')) }}" alt="当前背景" style="max-height:120px;border-radius:8px;" class="border">
+                            <p class="text-muted small mt-1">当前：{{ group.background_image }}</p>
+                        </div>
+                        {% endif %}
+                        <input type="file" name="background_image" class="form-control" accept="image/*">
+                        <small class="text-muted">支持 PNG、JPG、GIF、WebP 格式。留空则保持当前背景不变。</small>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg"></i> 保存
+                        </button>
+                        <a href="{{ url_for('admin.admin_groups') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-lg"></i> 取消
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

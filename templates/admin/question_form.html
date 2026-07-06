@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}{{ '编辑' if question else '新增' }}题目{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card">
+            <div class="card-header bg-white">
+                <h4><i class="bi bi-{{ 'pencil' if question else 'plus' }} me-2"></i>{{ '编辑' if question else '新增' }}题目</h4>
+            </div>
+            <div class="card-body p-4">
+                <form method="post">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">分类</label>
+                            <select name="category_id" class="form-select" id="categorySelect" required>
+                                {% for cat in categories %}
+                                <option value="{{ cat.id }}" {% if question and question.category_id == cat.id %}selected{% endif %}>{{ cat.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">分组</label>
+                            <select name="group_id" class="form-select" id="groupSelect">
+                                <option value="">无分组</option>
+                                {% for g in groups %}
+                                <option value="{{ g.id }}" data-category="{{ g.category_id }}" {% if question and question.group_id == g.id %}selected{% endif %}>{{ g.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">题型</label>
+                            <select name="type" class="form-select" id="typeSelect" required>
+                                <option value="single" {% if question and question.type == 'single' %}selected{% endif %}>单选题</option>
+                                <option value="multiple" {% if question and question.type == 'multiple' %}selected{% endif %}>多选题</option>
+                                <option value="judge" {% if question and question.type == 'judge' %}selected{% endif %}>判断题</option>
+                                <option value="fill" {% if question and question.type == 'fill' %}selected{% endif %}>填空题</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">难度</label>
+                            <select name="difficulty" class="form-select">
+                                <option value="1" {% if question and question.difficulty == 1 %}selected{% endif %}>简单</option>
+                                <option value="2" {% if question and question.difficulty == 2 %}selected{% endif %}>中等</option>
+                                <option value="3" {% if question and question.difficulty == 3 %}selected{% endif %}>困难</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">题干</label>
+                        <textarea name="content" class="form-control" rows="3" required>{{ question.content if question else '' }}</textarea>
+                    </div>
+                    <div id="optionsArea" class="mb-3" style="display: {% if question and question.type in ['judge','fill'] %}none{% else %}block{% endif %};">
+                        <label class="form-label">选项（每行一个，格式如“A. 北京”）</label>
+                        <textarea name="options" class="form-control" rows="4">{% if question and question.options %}{{ '\n'.join(question.options) }}{% endif %}</textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">正确答案</label>
+                        <input type="text" name="answer" class="form-control" value="{{ question.answer if question else '' }}" required>
+                        <small class="text-muted">单选题填 A/B/C 字母；多选题填 A,B,C 逗号分隔；判断题填 正确/错误；填空题多个答案用 | 分隔</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">解析</label>
+                        <textarea name="analysis" class="form-control" rows="2">{{ question.analysis if question else '' }}</textarea>
+                    </div>
+                    <hr>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg"></i> 保存
+                        </button>
+                        <a href="{{ url_for('admin.admin_questions') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-lg"></i> 取消
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('categorySelect').addEventListener('change', function() {
+    var catId = this.value;
+    var groupSelect = document.getElementById('groupSelect');
+    for (var i = 0; i < groupSelect.options.length; i++) {
+        var opt = groupSelect.options[i];
+        if (opt.value === '') continue;
+        if (opt.getAttribute('data-category') === catId) {
+            opt.style.display = '';
+        } else {
+            opt.style.display = 'none';
+        }
+    }
+    if (groupSelect.selectedOptions[0] && groupSelect.selectedOptions[0].style.display === 'none') {
+        groupSelect.value = '';
+    }
+});
+document.getElementById('categorySelect').dispatchEvent(new Event('change'));
+
+document.getElementById('typeSelect').addEventListener('change', function() {
+    var opts = document.getElementById('optionsArea');
+    if (this.value === 'judge' || this.value === 'fill') {
+        opts.style.display = 'none';
+    } else {
+        opts.style.display = 'block';
+    }
+});
+</script>
+{% endblock %}
