@@ -226,21 +226,32 @@ def finish_group():
             all_correct = False
             break
 
-    # 清理预创建的空记录（由 group_quiz/start_group 创建）
+    # 复用预创建的记录（由 group_quiz/start_group 创建），保留原始开始时间
     old_record_id = session.get('quiz_record_id')
     if old_record_id:
-        old_record = QuizRecord.query.get(old_record_id)
-        if old_record and old_record.end_time is None:
-            db.session.delete(old_record)
-
-    # 为本组提交创建新的答题记录
-    record = QuizRecord(
-        user_id=current_user.id,
-        category_id=group_info['category_id'],
-        total_questions=len(question_ids)
-    )
-    db.session.add(record)
-    db.session.commit()
+        record = QuizRecord.query.get(old_record_id)
+        if record and record.end_time is None:
+            # 复用此记录，更新必要字段
+            record.category_id = group_info['category_id']
+            record.total_questions = len(question_ids)
+        else:
+            # 如果记录不存在或已完成，创建新记录
+            record = QuizRecord(
+                user_id=current_user.id,
+                category_id=group_info['category_id'],
+                total_questions=len(question_ids)
+            )
+            db.session.add(record)
+            db.session.commit()
+    else:
+        # 没有旧记录，创建新记录
+        record = QuizRecord(
+            user_id=current_user.id,
+            category_id=group_info['category_id'],
+            total_questions=len(question_ids)
+        )
+        db.session.add(record)
+        db.session.commit()
 
     # 保存每道题的答题详情
     correct_count = 0

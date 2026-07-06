@@ -410,3 +410,29 @@ def admin_clear_user_history(id):
     db.session.commit()
     flash(f'已清除用户 {user.username} 的所有答题历史数据')
     return redirect(url_for('admin.admin_users'))
+
+@admin_bp.route('/user/delete/<int:id>')
+@login_required
+@admin_required
+def admin_delete_user(id):
+    """删除用户及其所有关联数据"""
+    user = User.query.get_or_404(id)
+    if user.id == current_user.id:
+        flash('不能删除自己')
+        return redirect(url_for('admin.admin_users'))
+    
+    # 删除该用户的答题详情
+    records = QuizRecord.query.filter_by(user_id=user.id).all()
+    record_ids = [r.id for r in records]
+    if record_ids:
+        QuizDetail.query.filter(QuizDetail.record_id.in_(record_ids)).delete(synchronize_session=False)
+        QuizRecord.query.filter_by(user_id=user.id).delete(synchronize_session=False)
+    
+    # 删除该用户的学习进度
+    UserProgress.query.filter_by(user_id=user.id).delete()
+    
+    # 删除用户
+    db.session.delete(user)
+    db.session.commit()
+    flash(f'用户 {user.username} 及其所有数据已删除')
+    return redirect(url_for('admin.admin_users'))
