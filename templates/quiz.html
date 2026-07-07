@@ -53,6 +53,12 @@ body {
                     
                     <h4 class="mb-4">{{ question.content }}</h4>
                     
+                    {% if question.image %}
+                    <div class="mb-4 text-center">
+                        <img src="{{ url_for('static', filename=question.image.replace('static/', '')) }}" alt="题目配图" class="img-fluid rounded" style="max-height: 400px;">
+                    </div>
+                    {% endif %}
+                    
                     {% if question.type == 'single' %}
                         <div class="list-group">
                             {% for opt in question.options %}

@@ -101,6 +101,11 @@
                         <div id="collapse{{ detail.id }}" class="accordion-collapse collapse" aria-labelledby="heading{{ detail.id }}" data-bs-parent="#questionAccordion">
                             <div class="accordion-body">
                                 <p><strong>题干：</strong><br>{{ detail.question.content }}</p>
+                                {% if detail.question.image %}
+                                <div class="mb-3 text-center">
+                                    <img src="{{ url_for('static', filename=detail.question.image.replace('static/', '')) }}" alt="题目配图" class="img-fluid rounded" style="max-height: 300px;">
+                                </div>
+                                {% endif %}
                                 <p>
                                     <strong>你的答案：</strong>
                                     {% if detail.user_answer is iterable and detail.user_answer is not string %}

@@ -15,6 +15,8 @@ try:
 except ImportError:
     HAS_PANDAS = False
     pd = None
+import zipfile
+import shutil
 from models import db, User, Category, Group, Question, QuizRecord, QuizDetail, UserProgress
 from utils import admin_required
 
@@ -146,6 +148,18 @@ def admin_questions():
     questions = Question.query.all()
     return render_template('admin/questions.html', questions=questions)
 
+def _handle_question_image_upload():
+    """处理题目配图上传，返回保存的文件路径"""
+    file = request.files.get('question_image')
+    if file and file.filename and _allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        upload_dir = os.path.join('static', 'uploads', 'questions')
+        os.makedirs(upload_dir, exist_ok=True)
+        filepath = os.path.join(upload_dir, filename)
+        file.save(filepath)
+        return os.path.join('static', 'uploads', 'questions', filename).replace('\\', '/')
+    return None
+
 @admin_bp.route('/question/add', methods=['GET', 'POST'])
 @login_required
 @admin_required
@@ -160,8 +174,9 @@ def admin_question_add():
         answer = request.form['answer']
         analysis = request.form.get('analysis', '')
         difficulty = request.form.get('difficulty', 1, type=int)
+        image = _handle_question_image_upload()
         q = Question(category_id=category_id, group_id=group_id, type=qtype, content=content,
-                     options=options, answer=answer, analysis=analysis, difficulty=difficulty)
+                     image=image, options=options, answer=answer, analysis=analysis, difficulty=difficulty)
         db.session.add(q)
         db.session.commit()
         flash('题目添加成功')
@@ -186,6 +201,9 @@ def admin_question_edit(id):
         q.answer = request.form['answer']
         q.analysis = request.form.get('analysis', '')
         q.difficulty = request.form.get('difficulty', 1, type=int)
+        image = _handle_question_image_upload()
+        if image:
+            q.image = image
         db.session.commit()
         flash('题目更新成功')
         return redirect(url_for('admin.admin_questions'))
@@ -221,6 +239,15 @@ def admin_questions_bulk_delete():
     flash(f'成功删除 {len(ids)} 道题目')
     return redirect(url_for('admin.admin_questions'))
 
+# ==================== 下载导入提示词 ====================
+@admin_bp.route('/download-import-prompt')
+@login_required
+@admin_required
+def admin_download_import_prompt():
+    """下载 AI 数据转换提示词文件"""
+    prompt_path = os.path.join('static', 'import_prompt.txt')
+    return send_file(prompt_path, download_name='import_prompt.txt', as_attachment=True)
+
 # ==================== 批量导入 ====================
 @admin_bp.route('/import', methods=['GET', 'POST'])
 @login_required
@@ -228,75 +255,130 @@ def admin_questions_bulk_delete():
 def admin_import():
     if request.method == 'POST':
         file = request.files['file']
-        if file and file.filename.endswith(('.xlsx', '.xls', '.csv')):
-            filename = secure_filename(file.filename)
-            filepath = os.path.join('uploads', filename)
-            file.save(filepath)
-            try:
-                df = pd.read_excel(filepath) if filepath.endswith(('xlsx','xls')) else pd.read_csv(filepath)
-                add_count = 0
-                update_count = 0
-                for _, row in df.iterrows():
-                    cat_name = row['分类名称']
-                    category = Category.query.filter_by(name=cat_name).first()
-                    if not category:
-                        category = Category(name=cat_name)
-                        db.session.add(category)
+        if not file:
+            flash('请选择文件')
+            return redirect(url_for('admin.admin_import'))
+        
+        is_zip = file.filename.endswith('.zip')
+        is_single = file.filename.endswith(('.xlsx', '.xls', '.csv'))
+        
+        if not (is_zip or is_single):
+            flash('请上传 .zip 压缩包 或 .xlsx/.xls/.csv 文件')
+            return redirect(url_for('admin.admin_import'))
+        
+        filename = secure_filename(file.filename)
+        filepath = os.path.join('uploads', filename)
+        file.save(filepath)
+        
+        temp_dir = None
+        data_filepath = None
+        
+        try:
+            if is_zip:
+                # 解压并找到 Excel/CSV 文件
+                temp_dir = os.path.join('uploads', f'_import_{int(datetime.utcnow().timestamp())}')
+                os.makedirs(temp_dir, exist_ok=True)
+                
+                with zipfile.ZipFile(filepath, 'r') as zf:
+                    zf.extractall(temp_dir)
+                
+                # 查找 Excel/CSV 文件和图片
+                for root, _, files in os.walk(temp_dir):
+                    for f in files:
+                        if f.endswith(('.xlsx', '.xls', '.csv')):
+                            data_filepath = os.path.join(root, f)
+                        elif f.rsplit('.', 1)[-1].lower() in ALLOWED_EXTENSIONS:
+                            # 复制图片到上传目录
+                            src = os.path.join(root, f)
+                            img_dir = os.path.join('static', 'uploads', 'questions')
+                            os.makedirs(img_dir, exist_ok=True)
+                            img_dest = os.path.join(img_dir, secure_filename(f))
+                            shutil.copy2(src, img_dest)
+                
+                if not data_filepath:
+                    flash('压缩包中未找到 Excel 或 CSV 文件')
+                    return redirect(url_for('admin.admin_import'))
+            else:
+                data_filepath = filepath
+            
+            # 读取数据文件
+            df = pd.read_excel(data_filepath) if data_filepath.endswith(('.xlsx','xls')) else pd.read_csv(data_filepath)
+            add_count = 0
+            update_count = 0
+            for _, row in df.iterrows():
+                cat_name = row['分类名称']
+                category = Category.query.filter_by(name=cat_name).first()
+                if not category:
+                    category = Category(name=cat_name)
+                    db.session.add(category)
+                    db.session.flush()
+
+                group_name = row.get('分组名称', '')
+                group_id = None
+                if pd.notna(group_name) and str(group_name).strip():
+                    group_name = str(group_name).strip()
+                    group = Group.query.filter_by(name=group_name, category_id=category.id).first()
+                    if not group:
+                        group = Group(name=group_name, category_id=category.id)
+                        db.session.add(group)
                         db.session.flush()
+                    group_id = group.id
 
-                    group_name = row.get('分组名称', '')
-                    group_id = None
-                    if group_name:
-                        group = Group.query.filter_by(name=group_name, category_id=category.id).first()
-                        if not group:
-                            group = Group(name=group_name, category_id=category.id)
-                            db.session.add(group)
-                            db.session.flush()
-                        group_id = group.id
+                qtype = str(row['题型']).strip().lower()
+                if qtype not in ['single', 'multiple', 'judge', 'fill']:
+                    flash(f'跳过未知题型：{qtype}')
+                    continue
 
-                    qtype = row['题型']
-                    if qtype not in ['single', 'multiple', 'judge', 'fill']:
-                        flash(f'跳过未知题型：{qtype}')
-                        continue
+                opts = str(row['选项']).split('|') if pd.notna(row.get('选项')) else []
+                answer = str(row['正确答案']).strip()
+                content = str(row['题干']).strip()
+                analysis = str(row.get('解析', '')).strip() if pd.notna(row.get('解析')) else ''
+                difficulty = int(row.get('难度', 1)) if pd.notna(row.get('难度')) else 1
+                
+                # 图片处理
+                image_filename = str(row.get('题目图片', '')).strip() if pd.notna(row.get('题目图片')) else ''
+                image = None
+                if image_filename:
+                    img_path = os.path.join('static', 'uploads', 'questions', secure_filename(image_filename))
+                    if os.path.exists(img_path):
+                        image = img_path.replace('\\', '/')
 
-                    opts = row['选项'].split('|') if pd.notna(row.get('选项')) else []
-                    answer = row['正确答案']
-                    content = row['题干']
-                    analysis = row.get('解析', '')
-                    difficulty = row.get('难度', 1)
+                existing = Question.query.filter_by(category_id=category.id, content=content).first()
+                if existing:
+                    existing.type = qtype
+                    existing.options = opts
+                    existing.answer = answer
+                    existing.analysis = analysis
+                    existing.difficulty = difficulty
+                    existing.group_id = group_id
+                    if image:
+                        existing.image = image
+                    update_count += 1
+                else:
+                    q = Question(
+                        category_id=category.id,
+                        group_id=group_id,
+                        type=qtype,
+                        content=content,
+                        image=image,
+                        options=opts,
+                        answer=answer,
+                        analysis=analysis,
+                        difficulty=difficulty
+                    )
+                    db.session.add(q)
+                    add_count += 1
 
-                    existing = Question.query.filter_by(category_id=category.id, content=content).first()
-                    if existing:
-                        existing.type = qtype
-                        existing.options = opts
-                        existing.answer = answer
-                        existing.analysis = analysis
-                        existing.difficulty = difficulty
-                        existing.group_id = group_id
-                        update_count += 1
-                    else:
-                        q = Question(
-                            category_id=category.id,
-                            group_id=group_id,
-                            type=qtype,
-                            content=content,
-                            options=opts,
-                            answer=answer,
-                            analysis=analysis,
-                            difficulty=difficulty
-                        )
-                        db.session.add(q)
-                        add_count += 1
-
-                db.session.commit()
-                flash(f'导入完成：新增 {add_count} 道，更新 {update_count} 道')
-            except Exception as e:
-                db.session.rollback()
-                flash(f'导入失败：{str(e)}')
-            finally:
-                os.remove(filepath)
-        else:
-            flash('请上传 Excel 或 CSV 文件')
+            db.session.commit()
+            flash(f'导入完成：新增 {add_count} 道，更新 {update_count} 道')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'导入失败：{str(e)}')
+        finally:
+            os.remove(filepath)
+            # 清理临时解压目录
+            if temp_dir and os.path.exists(temp_dir):
+                shutil.rmtree(temp_dir, ignore_errors=True)
         return redirect(url_for('admin.admin_import'))
     return render_template('admin/import.html')
 
@@ -364,6 +446,40 @@ def admin_export():
     output.seek(0)
 
     return send_file(output, download_name=f'答题记录_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx', as_attachment=True)
+
+# ==================== 历史记录管理 ====================
+@admin_bp.route('/history')
+@login_required
+@admin_required
+def admin_history():
+    """管理员查看所有用户的答题历史（支持筛选）"""
+    from sqlalchemy.orm import joinedload
+    
+    username = request.args.get('username', '').strip()
+    category_id = request.args.get('category_id', type=int)
+    start_date = request.args.get('start_date', '').strip()
+    end_date = request.args.get('end_date', '').strip()
+    
+    query = QuizRecord.query.options(
+        joinedload(QuizRecord.user),
+        joinedload(QuizRecord.category)
+    ).join(User).join(Category)
+    
+    if username:
+        query = query.filter(User.username.contains(username))
+    if category_id:
+        query = query.filter(QuizRecord.category_id == category_id)
+    if start_date:
+        query = query.filter(QuizRecord.start_time >= datetime.strptime(start_date, '%Y-%m-%d'))
+    if end_date:
+        query = query.filter(QuizRecord.start_time <= datetime.strptime(end_date, '%Y-%m-%d') + timedelta(days=1))
+    
+    records = query.order_by(QuizRecord.start_time.desc()).limit(500).all()
+    categories = Category.query.all()
+    
+    return render_template('admin/history.html', records=records, categories=categories,
+                           filters={'username': username, 'category_id': category_id,
+                                    'start_date': start_date, 'end_date': end_date})
 
 # ==================== 用户管理 ====================
 @admin_bp.route('/users')

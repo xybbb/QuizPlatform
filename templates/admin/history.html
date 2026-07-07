@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}答题历史 - 管理后台{% endblock %}
+{% block head %}
+<style>
+    .central-card { max-width: 1100px !important; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="mb-3">
+    <a href="{{ url_for('admin.admin_dashboard') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left"></i> 返回管理后台
+    </a>
+</div>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-clock-history me-2"></i>答题历史记录（全部用户）</h2>
+</div>
+
+<!-- 筛选区域 -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" action="{{ url_for('admin.admin_history') }}" class="row g-2 align-items-end">
+            <div class="col-md-2">
+                <label class="form-label">用户名</label>
+                <input type="text" name="username" class="form-control" placeholder="模糊搜索" value="{{ filters.username or '' }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">分类</label>
+                <select name="category_id" class="form-select">
+                    <option value="">全部</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat.id }}" {% if filters.category_id == cat.id %}selected{% endif %}>{{ cat.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">开始日期</label>
+                <input type="date" name="start_date" class="form-control" value="{{ filters.start_date or '' }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">结束日期</label>
+                <input type="date" name="end_date" class="form-control" value="{{ filters.end_date or '' }}">
+            </div>
+            <div class="col-md-4 d-flex gap-2 flex-nowrap">
+                <button type="submit" class="btn btn-primary text-nowrap">
+                    <i class="bi bi-search"></i> 筛选
+                </button>
+                <a href="{{ url_for('admin.admin_history') }}" class="btn btn-outline-secondary text-nowrap">
+                    <i class="bi bi-x-circle"></i> 清除
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="table-responsive">
+    <table class="table table-hover align-middle bg-white">
+        <thead class="table-light">
+            <tr>
+                <th>用户</th>
+                <th>分类</th>
+                <th>开始时间</th>
+                <th>得分</th>
+                <th>正确/总题</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for rec in records %}
+            <tr>
+                <td><i class="bi bi-person me-1 text-primary"></i>{{ rec.user.username }}</td>
+                <td><i class="bi bi-folder2 me-1 text-primary"></i>{{ rec.category.name }}</td>
+                <td>{{ rec.start_time.strftime('%Y-%m-%d %H:%M') if rec.start_time else '-' }}</td>
+                <td><span class="badge bg-success">{{ rec.score }}</span></td>
+                <td>{{ rec.correct_count }}/{{ rec.total_questions }}</td>
+                <td>
+                    <a href="{{ url_for('quiz.result', record_id=rec.id) }}" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-eye"></i> 详情
+                    </a>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" class="text-center py-4 text-muted">
+                    <i class="bi bi-inbox fs-1 d-block mb-2"></i> 暂无答题记录
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

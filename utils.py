@@ -65,6 +65,14 @@ def init_db():
                 conn.commit()
             print("已添加 group.background_image 列")
     
+    if 'question' in inspector.get_table_names():
+        columns = [col['name'] for col in inspector.get_columns('question')]
+        if 'image' not in columns:
+            with db.engine.connect() as conn:
+                conn.execute(text("ALTER TABLE question ADD COLUMN image VARCHAR(255)"))
+                conn.commit()
+            print("已添加 question.image 列")
+    
     if not User.query.filter_by(role='admin').first():
         admin = User(
             username=ADMIN_USERNAME,

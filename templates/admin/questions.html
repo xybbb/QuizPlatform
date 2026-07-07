@@ -37,7 +37,12 @@
                     <td>
                         {% if q.type == 'single' %}<span class="badge bg-primary">单选{% elif q.type == 'multiple' %}<span class="badge bg-success">多选{% elif q.type == 'judge' %}<span class="badge bg-warning">判断{% elif q.type == 'fill' %}<span class="badge bg-secondary">填空{% endif %}</span>
                     </td>
-                    <td>{{ q.content[:30] }}...</td>
+                    <td>
+                        {% if q.image %}
+                        <img src="{{ url_for('static', filename=q.image.replace('static/', '')) }}" alt="配图" style="max-height:30px;border-radius:4px;margin-right:4px;">
+                        {% endif %}
+                        {{ q.content[:30] }}...
+                    </td>
                     <td><span class="badge bg-{{ 'success' if q.difficulty==1 else 'warning' if q.difficulty==2 else 'danger' }}">{{ q.difficulty }}</span></td>
                     <td>
                         <a href="{{ url_for('admin.admin_question_edit', id=q.id) }}" class="btn btn-sm btn-warning">

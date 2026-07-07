@@ -53,6 +53,7 @@ class Question(db.Model):
     group_id = db.Column(db.Integer, db.ForeignKey('group.id'), nullable=True)
     type = db.Column(db.String(20), nullable=False)   # single, multiple, judge, fill
     content = db.Column(db.Text, nullable=False)
+    image = db.Column(db.String(255))  # 题目配图路径
     options = db.Column(db.JSON)
     answer = db.Column(db.String(500))
     analysis = db.Column(db.Text)

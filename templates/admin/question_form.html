@@ -8,7 +8,7 @@
                 <h4><i class="bi bi-{{ 'pencil' if question else 'plus' }} me-2"></i>{{ '编辑' if question else '新增' }}题目</h4>
             </div>
             <div class="card-body p-4">
-                <form method="post">
+                <form method="post" enctype="multipart/form-data">
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label">分类</label>
@@ -51,14 +51,25 @@
                         <label class="form-label">题干</label>
                         <textarea name="content" class="form-control" rows="3" required>{{ question.content if question else '' }}</textarea>
                     </div>
+                    <div class="mb-3">
+                        <label class="form-label">题目配图（可选）</label>
+                        {% if question and question.image %}
+                        <div class="mb-2">
+                            <img src="{{ url_for('static', filename=question.image.replace('static/', '')) }}" alt="题目配图" style="max-height: 200px; border-radius: 8px;">
+                            <p class="text-muted small mt-1">当前图片，上传新图片将替换</p>
+                        </div>
+                        {% endif %}
+                        <input type="file" name="question_image" class="form-control" accept=".png,.jpg,.jpeg,.gif,.webp,.bmp">
+                        <small class="text-muted">支持 PNG, JPG, GIF, WebP, BMP 格式</small>
+                    </div>
                     <div id="optionsArea" class="mb-3" style="display: {% if question and question.type in ['judge','fill'] %}none{% else %}block{% endif %};">
-                        <label class="form-label">选项（每行一个，格式如“A. 北京”）</label>
+                        <label class="form-label">选项（每行一个，格式如"A. 北京"）</label>
                         <textarea name="options" class="form-control" rows="4">{% if question and question.options %}{{ '\n'.join(question.options) }}{% endif %}</textarea>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">正确答案</label>
                         <input type="text" name="answer" class="form-control" value="{{ question.answer if question else '' }}" required>
-                        <small class="text-muted">单选题填 A/B/C 字母；多选题填 A,B,C 逗号分隔；判断题填 正确/错误；填空题多个答案用 | 分隔</small>
+                        <small class="text-muted">单选题填 A/B/C 字母；多选题填 A,B,C 逗号分隔；判断题填 对/错；填空题多个答案用 | 分隔</small>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">解析</label>
