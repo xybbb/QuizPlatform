@@ -58,7 +58,7 @@ def index():
 @quiz_bp.route('/quiz/<int:category_id>')
 @login_required
 def start_quiz(category_id):
-    category = Category.query.get_or_404(category_id)
+    category = db.get_or_404(Category, category_id)
     questions = Question.query.filter_by(category_id=category_id).order_by(db.func.random()).limit(10).all()
     if not questions:
         flash('该分类下暂无题目')
@@ -76,7 +76,7 @@ def start_quiz(category_id):
 @quiz_bp.route('/group_quiz/<int:category_id>')
 @login_required
 def group_quiz(category_id):
-    category = Category.query.get_or_404(category_id)
+    category = db.get_or_404(Category, category_id)
     db_groups = Group.query.filter_by(category_id=category_id).order_by(Group.order).all()
     if not db_groups:
         flash('该分类下没有分组，请先创建分组')
@@ -147,7 +147,7 @@ def do_quiz():
         groups = session['groups']
         group_name = groups[current_group]['group_name']
         current_group_id = groups[current_group]['group_id']
-        current_group_obj = Group.query.get(current_group_id)
+        current_group_obj = db.session.get(Group, current_group_id)
         group_background_image = current_group_obj.background_image if current_group_obj else None
         group_category_id = groups[current_group]['category_id']
     else:
@@ -184,7 +184,7 @@ def do_quiz():
         return redirect(url_for('quiz.do_quiz'))
 
     current_qid = question_ids[current_index]
-    question = Question.query.get(current_qid)
+    question = db.session.get(Question, current_qid)
     saved_answer = session['answers'].get(str(current_qid))
 
     return render_template(
@@ -217,7 +217,7 @@ def finish_group():
         if qid_str not in session['answers']:
             all_correct = False
             break
-        question = Question.query.get(qid)
+        question = db.session.get(Question, qid)
         if not question:
             all_correct = False
             break
@@ -229,7 +229,7 @@ def finish_group():
     # 复用预创建的记录（由 group_quiz/start_group 创建），保留原始开始时间
     old_record_id = session.get('quiz_record_id')
     if old_record_id:
-        record = QuizRecord.query.get(old_record_id)
+        record = db.session.get(QuizRecord, old_record_id)
         if record and record.end_time is None:
             # 复用此记录，更新必要字段
             record.category_id = group_info['category_id']
@@ -257,7 +257,7 @@ def finish_group():
     correct_count = 0
     for qid in question_ids:
         qid_str = str(qid)
-        question = Question.query.get(qid)
+        question = db.session.get(Question, qid)
         user_answer = session['answers'].get(qid_str)
         is_correct = check_answer(question, user_answer) if question and user_answer else False
         score_earned = 1 if is_correct else 0
@@ -313,14 +313,14 @@ def finish_group():
 @login_required
 def submit_quiz():
     record_id = session.get('quiz_record_id')
-    record = QuizRecord.query.get(record_id)
+    record = db.session.get(QuizRecord, record_id)
     if not record:
         return redirect(url_for('quiz.index'))
 
     total_score = 0
     correct_count = 0
     for qid, user_answer in session['answers'].items():
-        question = Question.query.get(int(qid))
+        question = db.session.get(Question, int(qid))
         correct = check_answer(question, user_answer)
         score_earned = 1 if correct else 0
         total_score += score_earned
@@ -350,10 +350,12 @@ def submit_quiz():
 @quiz_bp.route('/result/<int:record_id>')
 @login_required
 def result(record_id):
-    record = QuizRecord.query.options(
-        joinedload(QuizRecord.details).joinedload(QuizDetail.question),
-        joinedload(QuizRecord.category)
-    ).get_or_404(record_id)
+    record = db.session.get(QuizRecord, record_id,
+        options=[joinedload(QuizRecord.details).joinedload(QuizDetail.question),
+                 joinedload(QuizRecord.category)])
+    if record is None:
+        from flask import abort
+        abort(404)
     if record.user_id != current_user.id and current_user.role != 'admin':
         flash('无权查看')
         return redirect(url_for('quiz.index'))
@@ -380,7 +382,7 @@ def result(record_id):
 @login_required
 def roadmap(category_id):
     """图形化题组路线图"""
-    category = Category.query.get_or_404(category_id)
+    category = db.get_or_404(Category, category_id)
     groups = Group.query.filter_by(category_id=category_id).order_by(Group.unlock_order, Group.order).all()
     
     if not groups:
@@ -400,8 +402,8 @@ def roadmap(category_id):
 @login_required
 def study(group_id):
     """学习资料页面"""
-    group = Group.query.get_or_404(group_id)
-    category = Category.query.get_or_404(group.category_id)
+    group = db.get_or_404(Group, group_id)
+    category = db.get_or_404(Category, group.category_id)
     
     # 获取该分类的进度
     progress = UserProgress.query.filter_by(user_id=current_user.id, category_id=category.id).first()
@@ -419,8 +421,8 @@ def study(group_id):
 @login_required
 def start_group(group_id):
     """从路线图启动特定题组的答题"""
-    group = Group.query.get_or_404(group_id)
-    category = Category.query.get_or_404(group.category_id)
+    group = db.get_or_404(Group, group_id)
+    category = db.get_or_404(Category, group.category_id)
     
     progress = UserProgress.query.filter_by(user_id=current_user.id, category_id=category.id).first()
     unlocked_order = progress.last_completed_group.unlock_order if (progress and progress.last_completed_group) else 0

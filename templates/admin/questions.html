@@ -8,6 +8,52 @@
     </a>
 </div>
 
+<!-- 筛选区域 -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" action="{{ url_for('admin.admin_questions') }}" class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label">按分类筛选</label>
+                <select name="category_id" class="form-select" id="categoryFilter">
+                    <option value="">全部分类</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat.id }}" {% if filters.category_id == cat.id %}selected{% endif %}>{{ cat.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">按分组筛选</label>
+                <select name="group_id" class="form-select" id="groupFilter">
+                    <option value="">全部分组</option>
+                    {% if filters.category_id %}
+                    <optgroup label="当前分类">
+                        {% for g in groups %}
+                        <option value="{{ g.id }}" {% if filters.group_id == g.id %}selected{% endif %}>{{ g.name }}</option>
+                        {% endfor %}
+                    </optgroup>
+                    {% else %}
+                    {% for cat in categories %}
+                        {% set cat_groups = cat.groups.all() %}
+                        {% if cat_groups %}
+                        <optgroup label="{{ cat.name }}">
+                            {% for g in cat_groups %}
+                            <option value="{{ g.id }}" {% if filters.group_id == g.id %}selected{% endif %}>{{ g.name }}</option>
+                            {% endfor %}
+                        </optgroup>
+                        {% endif %}
+                    {% endfor %}
+                    {% endif %}
+                </select>
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <a href="{{ url_for('admin.admin_questions') }}" class="btn btn-outline-secondary text-nowrap">
+                    <i class="bi bi-x-circle"></i> 清除筛选
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
 <form method="post" action="{{ url_for('admin.admin_questions_bulk_delete') }}" id="bulkDeleteForm">
     <div class="table-responsive">
         <table class="table table-hover align-middle bg-white">
@@ -74,6 +120,14 @@
 <script>
 document.getElementById('selectAll').addEventListener('change', function() {
     document.querySelectorAll('.question-checkbox').forEach(cb => cb.checked = this.checked);
+});
+
+// 分类/分组切换时自动提交
+document.getElementById('categoryFilter').addEventListener('change', function() {
+    this.form.submit();
+});
+document.getElementById('groupFilter').addEventListener('change', function() {
+    this.form.submit();
 });
 </script>
 {% endblock %}

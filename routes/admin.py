@@ -72,7 +72,7 @@ def admin_category_add():
 @login_required
 @admin_required
 def admin_category_delete(id):
-    cat = Category.query.get_or_404(id)
+    cat = db.get_or_404(Category, id)
     db.session.delete(cat)
     db.session.commit()
     flash('分类已删除')
@@ -112,7 +112,7 @@ def admin_group_add():
 @login_required
 @admin_required
 def admin_group_edit(id):
-    group = Group.query.get_or_404(id)
+    group = db.get_or_404(Group, id)
     if request.method == 'POST':
         group.name = request.form['name']
         group.category_id = request.form['category_id']
@@ -133,7 +133,7 @@ def admin_group_edit(id):
 @login_required
 @admin_required
 def admin_group_delete(id):
-    group = Group.query.get_or_404(id)
+    group = db.get_or_404(Group, id)
     Question.query.filter_by(group_id=id).update({Question.group_id: None})
     db.session.delete(group)
     db.session.commit()
@@ -145,8 +145,25 @@ def admin_group_delete(id):
 @login_required
 @admin_required
 def admin_questions():
-    questions = Question.query.all()
-    return render_template('admin/questions.html', questions=questions)
+    category_id = request.args.get('category_id', type=int)
+    group_id = request.args.get('group_id', type=int)
+    
+    query = Question.query
+    if category_id:
+        query = query.filter_by(category_id=category_id)
+    if group_id:
+        query = query.filter_by(group_id=group_id)
+    
+    questions = query.order_by(Question.id.desc()).all()
+    categories = Category.query.all()
+    if category_id:
+        groups = Group.query.filter_by(category_id=category_id).all()
+    else:
+        groups = Group.query.all()
+    
+    return render_template('admin/questions.html', questions=questions,
+                           categories=categories, groups=groups,
+                           filters={'category_id': category_id, 'group_id': group_id})
 
 def _handle_question_image_upload():
     """处理题目配图上传，返回保存的文件路径"""
@@ -190,7 +207,7 @@ def admin_question_add():
 @login_required
 @admin_required
 def admin_question_edit(id):
-    q = Question.query.get_or_404(id)
+    q = db.get_or_404(Question, id)
     if request.method == 'POST':
         q.category_id = request.form['category_id']
         q.group_id = request.form.get('group_id', type=int) or None
@@ -216,7 +233,7 @@ def admin_question_edit(id):
 @login_required
 @admin_required
 def admin_question_delete(id):
-    q = Question.query.get_or_404(id)
+    q = db.get_or_404(Question, id)
     db.session.delete(q)
     db.session.commit()
     flash('题目已删除')
@@ -493,7 +510,7 @@ def admin_users():
 @login_required
 @admin_required
 def admin_toggle_user(id):
-    user = User.query.get_or_404(id)
+    user = db.get_or_404(User, id)
     if user.id == current_user.id:
         flash('不能禁用自己')
     else:
@@ -508,7 +525,7 @@ def admin_toggle_user(id):
 @admin_required
 def admin_clear_user_history(id):
     """清除指定用户的所有答题历史数据"""
-    user = User.query.get_or_404(id)
+    user = db.get_or_404(User, id)
     if user.id == current_user.id:
         flash('不能清除自己的历史数据')
         return redirect(url_for('admin.admin_users'))
@@ -532,7 +549,7 @@ def admin_clear_user_history(id):
 @admin_required
 def admin_delete_user(id):
     """删除用户及其所有关联数据"""
-    user = User.query.get_or_404(id)
+    user = db.get_or_404(User, id)
     if user.id == current_user.id:
         flash('不能删除自己')
         return redirect(url_for('admin.admin_users'))

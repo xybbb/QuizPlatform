@@ -35,8 +35,8 @@ def ensure_templates():
 # ==================== 用户加载器 ====================
 @login_manager.user_loader
 def load_user(user_id):
-    from models import User
-    return User.query.get(int(user_id))
+    from models import db, User
+    return db.session.get(User, int(user_id))
 
 # ==================== 启动 ====================
 if __name__ == '__main__':
